@@ -20,6 +20,8 @@ typedef struct {
 
 uintptr_t x_pos, y_pos;
 
+uintptr_t total_size = 0;
+
 node_info interpret_tag(string_slice tag){
     if (slice_lit_match(tag, "p", true))
         return (node_info){simple_text,doc_text};
@@ -76,6 +78,7 @@ void render_node(draw_ctx *ctx, document_node *node){
 
 document_node* emit_content(string_slice slice, node_info info){
     document_node* node = zalloc(sizeof(document_node));
+    total_size += sizeof(document_node);
     node->content = slice;
     node->info = info;
     return node;
@@ -84,6 +87,7 @@ document_node* emit_content(string_slice slice, node_info info){
 document_node* parse_tag(Scanner *s){
     
     document_node* node = zalloc(sizeof(document_node));
+    total_size += sizeof(document_node);
     node->contents = clinkedlist_create();
     
     scan_to(s, '<');
@@ -138,7 +142,10 @@ int main(int argc, char* argv[]){
     Scanner s = scanner_make(file, file_size);
     
     document_node *root = zalloc(sizeof(document_node));
+    total_size += sizeof(document_node);
     root->contents = clinkedlist_create();
+    
+    print("total memory used: %i",total_size);
     
     while (!scan_eof(&s)){
         clinkedlist_push(root->contents, parse_tag(&s));
