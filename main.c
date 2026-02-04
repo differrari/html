@@ -1,4 +1,5 @@
 #include "syscalls/syscalls.h"
+#include "alloc/allocate.h"
 #include "files/helpers.h"
 #include "data/format/scanner/scanner.h"
 #include "input_keycodes.h"
