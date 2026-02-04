@@ -20,5 +20,5 @@ bool gpu() {
 }
 
 int main() {
-    gpu();
+    return not gpu();
 }
