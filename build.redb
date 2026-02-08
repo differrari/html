@@ -11,7 +11,8 @@ bool gpu() {
     set_package_type(package_red);
     set_target(target_native);
     
-    source("main.c");
+    source("doc.c");
+    source("html.c");
     
     if (compile()){
         gen_compile_commands();
