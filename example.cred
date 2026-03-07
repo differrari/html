@@ -1,0 +1,19 @@
+
+draw_view {
+    vertical({
+        image("REDACTED.png");
+        text("[REDACTED] Login");
+        vertical({
+            user = input_text(name: "User", placeholder: "username");
+            pass = input_text(name: "Password", placeholder: "...");
+            horizontal({
+                if (strlen(user))
+                    button("Log in", {
+                        .fill = 0.9f,
+                        .text_size = 16,
+                    }));//TODO: How do some Immediate UI libs handle buttons & text input
+                img_button("help");
+            });
+        });
+    });
+}

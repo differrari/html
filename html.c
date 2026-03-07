@@ -10,19 +10,19 @@ uintptr_t total_size = 0;
 
 node_info interpret_tag(string_slice tag){
     if (slice_lit_match(tag, "p", true))
-        return (node_info){doc_simple_text,doc_gen_text};
+        return (node_info){doc_simple_text,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h1", true))
-        return (node_info){doc_title,doc_gen_text};
+        return (node_info){doc_title,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h2", true))
-        return (node_info){doc_subtitle,doc_gen_text};
+        return (node_info){doc_subtitle,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h3", true))
-        return (node_info){doc_heading,doc_gen_text};
+        return (node_info){doc_heading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h4", true))
-        return (node_info){doc_subheading,doc_gen_text};
+        return (node_info){doc_subheading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h5", true))
-        return (node_info){doc_h5,doc_gen_text};
+        return (node_info){doc_h5,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h6", true))
-        return (node_info){doc_h6,doc_gen_text};
+        return (node_info){doc_h6,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "script", true)){
         in_case_of_js_break_glass();
     }
@@ -41,7 +41,7 @@ document_node* parse_tag(Scanner *s){
     
     document_node* node = zalloc(sizeof(document_node));
     total_size += sizeof(document_node);
-    node->contents = clinkedlist_create();
+    node->children = clinkedlist_create();
     
     scan_to(s, '<');
     string_slice open = scan_to(s, '>');
@@ -57,13 +57,13 @@ document_node* parse_tag(Scanner *s){
     uint32_t pos = s->pos;
     
     scan_to(s, '<');
-    clinkedlist_push(node->contents, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
+    clinkedlist_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
     while (scan_peek(s) != '/'){
         s->pos--;
-        clinkedlist_push(node->contents, parse_tag(s));
+        clinkedlist_push(node->children, parse_tag(s));
         in_pos = s->pos;
         scan_to(s, '<');
-        clinkedlist_push(node->contents, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
+        clinkedlist_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
     }
     string_slice close = scan_to(s, '>');
     if (*(char*)close.data != '/'){
@@ -94,7 +94,8 @@ int main(int argc, char* argv[]){
     
     document_node *root = zalloc(sizeof(document_node));
     total_size += sizeof(document_node);
-    root->contents = clinkedlist_create();
+    root->children = clinkedlist_create();
+    root->info.sizing_rule = size_fit;
     
     document_data doc = (document_data){
         .root = root
@@ -103,15 +104,17 @@ int main(int argc, char* argv[]){
     print("total memory used: %i",total_size);
     
     while (!scan_eof(&s)){
-        clinkedlist_push(root->contents, parse_tag(&s));
+        clinkedlist_push(root->children, parse_tag(&s));
     }    
+    
+    layout_document((gpu_rect){ctx.width,ctx.height}, doc);
     
     while (!should_close_ctx()){
         begin_drawing(&ctx);
         
-        fb_clear(&ctx, 0);
+        fb_clear(&ctx, 0xFFFFFFFF);
         
-        render_document(&ctx, (gpu_rect){ctx.width,ctx.height}, doc);
+        render_document(&ctx,doc);
         
         commit_draw_ctx(&ctx);
         

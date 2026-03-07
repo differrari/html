@@ -1,25 +1,27 @@
 @includeC("redbuild.h")
 @includeC("syscalls/syscalls.h")
 
-bool gpu() {
+bool compile_example(literal source_file) {
     if (not make_run("~/redlib","cross")) { return false; }
     new_module("html");
     set_name("html");
     
-    gen_symbols();
+    // debug();
     
     set_package_type(package_red);
     set_target(target_native);
     
     source("doc.c");
-    source("html.c");
+    source(source_file);
     
     if (compile()){
-        gen_compile_commands();
+        gen_compile_commands(source_file);
         run();
     }
 }
 
 int main() {
-    return not gpu();
+    defer emit_compile_commands();
+    rebuild_self();
+    return not compile_example("ui.c");
 }
