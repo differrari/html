@@ -1,38 +1,36 @@
 #include "doc.h"
 #include "syscalls/syscalls.h"
+#include "front.h"
 
 int main(){
     
-    draw_ctx ctx = {};
+    draw_ctx ctx = {.width = 1920, .height = 1080};
     
     request_draw_ctx(&ctx);
     
-    document_data data = {};
-    
-    data.root = zalloc(sizeof(document_node));
-    data.root->info = (node_info){ doc_layout_vertical, doc_gen_layout, .sizing_rule = size_fill, .bg_color = 0xFFFFFFFF };
-    data.root->children = linked_list_create();
-    
-    for (int y = 0; y < 3; y++){
-        document_node *row = zalloc(sizeof(document_node));
-        row->info = (node_info){ .type = doc_layout_horizontal, .general_type = doc_gen_layout, .sizing_rule = size_fill, .rect = {.size = {30,30}}};
-        linked_list_push(data.root->children,row);
-        row->children = linked_list_create();
-        for (int x = 0; x < 3; x++){
-            document_node *column = zalloc(sizeof(document_node));
-            column->info = (node_info){ .type = doc_layout_none, .general_type = doc_gen_layout, .bg_color = 0xFFb4dd13 + ((y*0x10) << 8) + (x*0x50), .sizing_rule = size_fill, .rect = {.size = {30,30}}};
-            linked_list_push(row->children,column);
-            column->content = slice_from_string(string_format("%i",(y *3)+x));
+    uno_begin_vertical((node_info){ doc_layout_vertical, doc_gen_layout, .sizing_rule = size_fill, .bg_color = 0xFF123456 + 0x050505 });
+        for (int y = 0; y < 3; y++){
+            uno_begin_horizontal((node_info){ .type = doc_layout_horizontal, .general_type = doc_gen_layout, .sizing_rule = size_fill});
+                for (int x = 0; x < 3; x++){
+                    uno_begin_depth((node_info){.bg_color = 0xFF123456 + 0x333333, .sizing_rule = size_fill, .padding = 4});
+                        uno_create_empty_view((node_info){.bg_color = 0xFF123456 + 0x111111, .sizing_rule = size_fill, .padding = 5});
+                        uno_create_view((node_info){ .type = doc_text_caption, .general_type = doc_gen_text, .sizing_rule = size_fill, .fg_color = 0xFFFFFFFF, .padding = 5},
+                            slice_from_literal("red"));
+                        uno_create_view((node_info){ .type = doc_text_title, .general_type = doc_gen_text, .fg_color = 0xFFFFFFFF, .sizing_rule = size_fill,.horiz_alignment = horizontal_center,.vert_alignment = vertical_center},
+                            slice_from_string(string_format("%i",(y *3)+x)));
+                    uno_end_depth();
+                }
+            uno_end_horizontal();
         }
-    }
+    uno_end_vertical();
     
-    layout_document((gpu_rect){ 0,0,ctx.width,ctx.height }, data);
+    layout_document((gpu_rect){ 0,0,ctx.width,ctx.height }, default_doc_data);
     
-    debug_document(data);
+    debug_document(default_doc_data);
     
     while (!should_close_ctx()){
         fb_clear(&ctx, 0);
-        render_document(&ctx, data);
+        render_document(&ctx, default_doc_data);
         commit_draw_ctx(&ctx);
     }
     

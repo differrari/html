@@ -17,3 +17,14 @@ draw_view {
         });
     });
 }
+
+void draw_view(){
+    uno_begin_vertical();
+        uno_image("");
+        uno_text("");
+        uno_begin_vertical();
+            uno_input_text("User","username");
+        uno_end_vertical();
+    uno_end_vertical();
+}
+

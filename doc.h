@@ -4,8 +4,20 @@
 #include "string/slice.h"
 #include "draw/draw.h"
 
-typedef enum { doc_type_none, doc_simple_text, doc_title, doc_subtitle, doc_heading, doc_subheading, doc_h5, doc_h6 } doc_node_type;
-typedef enum { doc_layout_none, doc_layout_vertical, doc_layout_horizontal } doc_layout_types;
+typedef enum {
+    leading,
+    horizontal_center,
+    trailing,
+} horizontal_alignment;
+
+typedef enum {
+    top,
+    bottom,
+    vertical_center,
+} vertical_alignment;  
+
+typedef enum { doc_text_none, doc_text_body, doc_text_title, doc_text_subtitle, doc_text_heading, doc_text_subheading, doc_text_footnote, doc_text_caption } doc_text_size;
+typedef enum { doc_layout_none, doc_layout_vertical, doc_layout_horizontal, doc_layout_depth } doc_layout_types;
 typedef enum { doc_gen_type_none, doc_gen_text, doc_gen_layout } doc_gen_type;
 
 typedef enum { size_none, size_fit, size_fill } size_rule;
@@ -19,6 +31,11 @@ typedef struct {
     
     size_rule sizing_rule;
     gpu_rect rect;
+    
+    u32 padding;
+    
+    horizontal_alignment horiz_alignment;
+    vertical_alignment vert_alignment;
     
 } node_info;
 

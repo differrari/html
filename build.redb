@@ -12,6 +12,7 @@ bool compile_example(literal source_file) {
     set_target(target_native);
     
     source("doc.c");
+    source("front.c");
     source(source_file);
     
     if (compile()){
@@ -23,5 +24,5 @@ bool compile_example(literal source_file) {
 int main() {
     defer emit_compile_commands();
     rebuild_self();
-    return not compile_example("ui.c");
+    return not compile_example("html.c");
 }

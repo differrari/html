@@ -4,8 +4,6 @@
 
 typedef struct {
     gpu_rect canvas;
-    i32 x;
-    i32 y;
     doc_layout_types direction;
 } doc_layout;
 
@@ -13,21 +11,21 @@ typedef struct {
     bool force_newline;
 } doc_layout_result;
 
-int text_to_scale(doc_node_type type){
+int text_to_scale(doc_text_size type){
     switch (type) {
-        case doc_simple_text:   return 3;
-        case doc_title:         return 7;
-        case doc_subtitle:      return 6;
-        case doc_heading:       return 5;
-        case doc_subheading:    return 4;
-        case doc_h5:            return 3;
-        case doc_h6:            return 2;
-        case doc_type_none:     return 0;
+        case doc_text_body:          return 3;
+        case doc_text_title:         return 7;
+        case doc_text_subtitle:      return 6;
+        case doc_text_heading:       return 5;
+        case doc_text_subheading:    return 4;
+        case doc_text_footnote:      return 3;
+        case doc_text_caption:       return 2;
+        case doc_text_none:          return 0;
     }
 }
 
-int text_force_newline(doc_node_type type){
-    return true;
+int text_force_newline(doc_text_size type){
+    return false;
 }
 
 gpu_size calculate_label_size(string_slice slice, u32 font_size){
@@ -51,41 +49,79 @@ gpu_size calculate_label_size(string_slice slice, u32 font_size){
     return (gpu_size){size * num_chars, (size + 2) * num_lines };
 }
 
+gpu_rect calculate_label(string_slice slice, u32 font_size, gpu_rect rect, horizontal_alignment horiz_align, vertical_alignment vert_align){
+    gpu_size s = calculate_label_size(slice,font_size);
+    gpu_point point = rect.point;
+    switch (horiz_align)
+    {
+    case trailing:
+        point.x = (s.width>=rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + (rect.size.width - s.width));
+        break;
+    case horizontal_center:
+        point.x = (s.width>=rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + ((rect.size.width - s.width)/2));
+        break;
+    default:
+        break;
+    }
+
+    switch (vert_align)
+    {
+    case bottom:
+        point.y = (s.height>=rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + (rect.size.height - s.height));
+        break;
+    case vertical_center:
+        point.y = (s.height>=rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + ((rect.size.height - s.height)/2));
+        break;
+    default:
+        break;
+    }
+
+    return (gpu_rect){.size = s, .point = point};
+}
+
 doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document_node *node){
     doc_layout_result result = {};
-    node->info.rect.point = (gpu_point){layout.x,layout.y};
     if (!node) return result;
+    node->info.rect.point = (gpu_point){layout.canvas.point.x,layout.canvas.point.y};
     if (node->info.general_type == doc_gen_layout){
         if (node->info.type != doc_layout_none) layout.direction = node->info.type;
     }
     if (node->info.sizing_rule == size_fill){
         node->info.rect.size = layout.canvas.size;
     }
+    
+    layout.canvas.point.x += node->info.padding;
+    layout.canvas.point.y += node->info.padding;
+    layout.canvas.size.width -= node->info.padding * 2;
+    layout.canvas.size.height -= node->info.padding * 2;
     if (node->children){
         size_t num_children = linked_list_count(node->children);
+        int index = 0;
         for (linked_list_node_t *n = node->children->head; n; n = n->next){
             if (!n->data) break;
             document_node *child = n->data;
             doc_layout new_layout = layout;
-            new_layout.canvas = node->info.rect;
-            if (layout.direction == doc_layout_horizontal)
+            if (layout.direction == doc_layout_horizontal){
                 new_layout.canvas.size.width /= num_children;
-            else
-                new_layout.canvas.size.height /= num_children;
+            } else if (layout.direction == doc_layout_vertical){
+                new_layout.canvas.size.height /= num_children; 
+            }
             doc_layout_result layout_result = layout_doc_node(new_layout, doc, child);
             if (layout.direction == doc_layout_horizontal && !layout_result.force_newline){
-                layout.x += child->info.rect.size.width;
+                layout.canvas.point.x += child->info.rect.size.width;
                 if (node->info.sizing_rule == size_fit){
                     node->info.rect.size.width += child->info.rect.size.width;
-                    node->info.rect.size.height = max(child->info.rect.size.height,child->info.rect.size.height);
+                    node->info.rect.size.height = max(node->info.rect.size.height,child->info.rect.size.height);
                 }
-            } else {
-                layout.x = 0;
-                layout.y += child->info.rect.size.height;
+            } else if (layout.direction != doc_layout_depth){
+                layout.canvas.point.y += child->info.rect.size.height;
                 if (node->info.sizing_rule == size_fit){
                     node->info.rect.size.height += child->info.rect.size.height;
-                    node->info.rect.size.width = max(child->info.rect.size.width,child->info.rect.size.width);
+                    node->info.rect.size.width = max(node->info.rect.size.width,child->info.rect.size.width);
                 }
+            } else if (node->info.sizing_rule == size_fit){
+                node->info.rect.size.height = max(node->info.rect.size.height,child->info.rect.size.height);
+                node->info.rect.size.width = max(node->info.rect.size.width,child->info.rect.size.width);
             }
         }
     }
@@ -93,12 +129,13 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
         switch (node->info.general_type) {
             case doc_gen_text:
             {
-                doc_node_type text_type = node->info.type;
-                int text_size = text_to_scale(text_type);
+                int text_size = text_to_scale(node->info.type);
                 if (!text_size) return (doc_layout_result){};
-                node->info.rect.size = calculate_label_size(node->content, text_size);
-                return (doc_layout_result){.force_newline = text_force_newline(node->info.type)};
-            }
+                gpu_rect label_rect = calculate_label(node->content, text_size, layout.canvas, node->info.horiz_alignment, node->info.vert_alignment);
+                if (node->info.sizing_rule == size_fit) node->info.rect.size = label_rect.size;
+                node->info.rect.point = label_rect.point;
+                result.force_newline = text_force_newline(node->info.type);
+            } break;
             default: break;
         }
     }
@@ -114,7 +151,7 @@ void layout_document(gpu_rect canvas, document_data doc){
 void render_doc_node(draw_ctx *ctx, document_node *node){
     if (!node) return;
     if (node->info.bg_color){
-        fb_fill_rect(ctx, node->info.rect.point.x, node->info.rect.point.y, node->info.rect.size.width, node->info.rect.size.height, node->info.bg_color);
+        fb_fill_rect(ctx, node->info.rect.point.x + node->info.padding, node->info.rect.point.y + node->info.padding, node->info.rect.size.width - (node->info.padding*2), node->info.rect.size.height - (node->info.padding*2), node->info.bg_color);
     }
     if (node->children)
         for (linked_list_node_t *n = node->children->head; n; n = n->next){
@@ -125,9 +162,8 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
         switch (node->info.general_type) {
             case doc_gen_text:
             {
-                doc_node_type text_type = node->info.type;
-                int text_size = text_to_scale(text_type);
-                fb_draw_slice(ctx, node->content, node->info.rect.point.x, node->info.rect.point.y, text_size, node->info.fg_color);
+                int text_size = text_to_scale(node->info.type);
+                fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.padding, node->info.rect.point.y + node->info.padding, text_size, node->info.fg_color);
             }
             default: break;
         }
@@ -144,7 +180,7 @@ char *indent = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t
 
 void debug_node(document_node *node, int depth){
     if (!node) return;
-    print("%sNode %ix%i - %ix%i",indent_by(depth),node->info.rect.point.x,node->info.rect.point.y,node->info.rect.size.width,node->info.rect.size.height);
+    print("%sNode %ix%i - %ix%i - %i",indent_by(depth),node->info.rect.point.x,node->info.rect.point.y,node->info.rect.size.width,node->info.rect.size.height,node->info.padding);
     if (node->children)
         for (linked_list_node_t *n = node->children->head; n; n = n->next){
             if (!n->data) break;

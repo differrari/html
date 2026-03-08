@@ -10,19 +10,19 @@ uintptr_t total_size = 0;
 
 node_info interpret_tag(string_slice tag){
     if (slice_lit_match(tag, "p", true))
-        return (node_info){doc_simple_text,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_body,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h1", true))
-        return (node_info){doc_title,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_title,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h2", true))
-        return (node_info){doc_subtitle,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_subtitle,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h3", true))
-        return (node_info){doc_heading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_heading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h4", true))
-        return (node_info){doc_subheading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_subheading,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h5", true))
-        return (node_info){doc_h5,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_footnote,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "h6", true))
-        return (node_info){doc_h6,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
+        return (node_info){doc_text_caption,doc_gen_text,.fg_color = 0xFF000000, .sizing_rule = size_fit };
     if (slice_lit_match(tag, "script", true)){
         in_case_of_js_break_glass();
     }
@@ -49,7 +49,7 @@ document_node* parse_tag(Scanner *s){
     open.length--;
     
     node->info = interpret_tag(open);
-    if (node->info.type == doc_type_none){
+    if (node->info.type == doc_text_none){
         print("Unknown tag %v",open);
         return node;
     }
@@ -96,6 +96,8 @@ int main(int argc, char* argv[]){
     total_size += sizeof(document_node);
     root->children = clinkedlist_create();
     root->info.sizing_rule = size_fit;
+    root->info.general_type = doc_gen_layout;
+    root->info.type = doc_layout_vertical;
     
     document_data doc = (document_data){
         .root = root
@@ -107,7 +109,9 @@ int main(int argc, char* argv[]){
         clinkedlist_push(root->children, parse_tag(&s));
     }    
     
-    layout_document((gpu_rect){ctx.width,ctx.height}, doc);
+    layout_document((gpu_rect){0,0,ctx.width,ctx.height}, doc);
+    
+    debug_document(doc);
     
     while (!should_close_ctx()){
         begin_drawing(&ctx);
