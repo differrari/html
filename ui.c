@@ -2,6 +2,31 @@
 #include "syscalls/syscalls.h"
 #include "front.h"
 #include "input_keycodes.h"
+#include "math/math.h"
+
+i32 selected_x = 0;
+i32 selected_y = 0;
+
+#define MAX_COLS 3
+#define MAX_ROWS 3
+
+void draw_view(){
+    VERTICAL(((node_info){ doc_layout_vertical, doc_gen_layout, .sizing_rule = size_fill, .bg_color = 0xFF123456 + 0x050505 }), {
+        for (int y = 0; y < MAX_ROWS; y++){
+            HORIZONTAL(((node_info){ .type = doc_layout_horizontal, .general_type = doc_gen_layout, .sizing_rule = size_fill}),{
+                for (int x = 0; x < MAX_COLS; x++){
+                    DEPTH(((node_info){.bg_color = 0xFF123456 + (selected_x == x && selected_y == y ? 0x333333 : 0x111111), .sizing_rule = size_fill, .padding = 4}),{
+                        if (selected_x == x && selected_y == y) uno_create_empty_view((node_info){.bg_color = 0xFF123456 + 0x111111, .sizing_rule = size_fill, .padding = 5});
+                        uno_create_view((node_info){ .type = doc_text_caption, .general_type = doc_gen_text, .sizing_rule = size_fill, .fg_color = 0xFFFFFFFF, .padding = 5},
+                            slice_from_literal("red"));
+                        uno_create_view((node_info){ .type = doc_text_title, .general_type = doc_gen_text, .fg_color = 0xFFFFFFFF, .sizing_rule = size_fill,.horiz_alignment = horizontal_center,.vert_alignment = vertical_center},
+                            slice_from_string(string_format("%i",(y *3)+x)));
+                    });
+                }
+            });
+        }
+    });
+}
 
 int main(){
     
@@ -9,32 +34,29 @@ int main(){
     
     request_draw_ctx(&ctx);
     
-    uno_begin_vertical((node_info){ doc_layout_vertical, doc_gen_layout, .sizing_rule = size_fill, .bg_color = 0xFF123456 + 0x050505 });
-        for (int y = 0; y < 3; y++){
-            uno_begin_horizontal((node_info){ .type = doc_layout_horizontal, .general_type = doc_gen_layout, .sizing_rule = size_fill});
-                for (int x = 0; x < 3; x++){
-                    uno_begin_depth((node_info){.bg_color = 0xFF123456 + 0x333333, .sizing_rule = size_fill, .padding = 4});
-                        uno_create_empty_view((node_info){.bg_color = 0xFF123456 + 0x111111, .sizing_rule = size_fill, .padding = 5});
-                        uno_create_view((node_info){ .type = doc_text_caption, .general_type = doc_gen_text, .sizing_rule = size_fill, .fg_color = 0xFFFFFFFF, .padding = 5},
-                            slice_from_literal("red"));
-                        uno_create_view((node_info){ .type = doc_text_title, .general_type = doc_gen_text, .fg_color = 0xFFFFFFFF, .sizing_rule = size_fill,.horiz_alignment = horizontal_center,.vert_alignment = vertical_center},
-                            slice_from_string(string_format("%i",(y *3)+x)));
-                    uno_end_depth();
-                }
-            uno_end_horizontal();
-        }
-    uno_end_vertical();
-    
-    layout_document((gpu_rect){ 0,0,ctx.width,ctx.height }, default_doc_data);
+    set_document_view(draw_view, (gpu_rect){ 0,0,ctx.width,ctx.height });
     
     debug_document(default_doc_data);
     
     while (!should_close_ctx()){
         fb_clear(&ctx, 0);
-        render_document(&ctx, default_doc_data);
+        uno_draw(&ctx);
         commit_draw_ctx(&ctx);
         kbd_event ev = {};
-        if (read_event(&ev) && ev.key == KEY_ESC) return 0;
+        if (read_event(&ev)){
+            if (ev.key == KEY_ESC) return 0;  
+            if (ev.type == KEY_PRESS){
+                bool changed = false;
+                switch (ev.key) {
+                    case KEY_LEFT: changed = true; selected_x = (selected_x - 1 + MAX_COLS) % MAX_COLS; break;
+                    case KEY_RIGHT: changed = true; selected_x = (selected_x + 1) % MAX_COLS; break;
+                    case KEY_UP: changed = true; selected_y = (selected_y - 1 + MAX_ROWS) % MAX_ROWS; break;
+                    case KEY_DOWN: changed = true; selected_y = (selected_y + 1 ) % MAX_ROWS; break;
+                    default: break;
+                }
+                if (changed) trigger_document_refresh();
+            }  
+        } 
     }
     
     destroy_draw_ctx(&ctx);

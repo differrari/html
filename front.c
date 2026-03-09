@@ -2,7 +2,9 @@
 #include "data/struct/chunk_array.h"
 #include "syscalls/syscalls.h"
 
+void (*view_build_func)();
 document_data default_doc_data;
+gpu_rect default_canvas;
 document_node* current_node;
 
 chunk_array_t *node_stack;
@@ -102,4 +104,36 @@ void uno_create_empty_view(node_info info){
         default_doc_data.root = node;
     if (current_node)
         uno_attach(current_node, node);
+}
+
+void uno_destroy_node(void *ptr){
+    document_node* node = ptr;
+    if (!node) return;
+    if (node->children){
+        // linked_list_for_each(node->children, uno_destroy_node);
+        // linked_list_destroy(node->children);
+    }
+    // release(node);
+}
+
+void set_document_view(void (*view_builder)(), gpu_rect canvas){
+    view_build_func = view_builder;
+    default_canvas = canvas;
+    trigger_document_refresh();
+}
+
+void trigger_document_refresh(){
+    chunk_array_reset(node_stack);
+    uno_destroy_node(default_doc_data.root);
+    default_doc_data.root = 0;
+    if (view_build_func) view_build_func();
+    refresh_document_layout();
+}
+
+void refresh_document_layout(){
+    layout_document(default_canvas, default_doc_data);
+}
+
+void uno_draw(draw_ctx *ctx){
+    render_document(ctx, default_doc_data);
 }

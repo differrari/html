@@ -4,8 +4,8 @@ draw_view {
         image("REDACTED.png");
         text("[REDACTED] Login");
         vertical({
-            user = input_text(name: "User", placeholder: "username");
-            pass = input_text(name: "Password", placeholder: "...");
+            user = input_text(name: "User", placeholder: "username", value: user);
+            pass = input_text(name: "Password", placeholder: "...", value: pass);
             horizontal({
                 if (strlen(user))
                     button("Log in", {
