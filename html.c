@@ -41,7 +41,7 @@ document_node* parse_tag(Scanner *s){
     
     document_node* node = zalloc(sizeof(document_node));
     total_size += sizeof(document_node);
-    node->children = clinkedlist_create();
+    node->children = linked_list_create();
     
     scan_to(s, '<');
     string_slice open = scan_to(s, '>');
@@ -57,13 +57,13 @@ document_node* parse_tag(Scanner *s){
     uint32_t pos = s->pos;
     
     scan_to(s, '<');
-    clinkedlist_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
+    linked_list_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
     while (scan_peek(s) != '/'){
         s->pos--;
-        clinkedlist_push(node->children, parse_tag(s));
+        linked_list_push(node->children, parse_tag(s));
         in_pos = s->pos;
         scan_to(s, '<');
-        clinkedlist_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
+        linked_list_push(node->children, emit_content((string_slice){(char*)s->buf + in_pos, s->pos - in_pos - 1},node->info));
     }
     string_slice close = scan_to(s, '>');
     if (*(char*)close.data != '/'){
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]){
     
     document_node *root = zalloc(sizeof(document_node));
     total_size += sizeof(document_node);
-    root->children = clinkedlist_create();
+    root->children = linked_list_create();
     root->info.sizing_rule = size_fit;
     root->info.general_type = doc_gen_layout;
     root->info.type = doc_layout_vertical;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]){
     print("total memory used: %i",total_size);
     
     while (!scan_eof(&s)){
-        clinkedlist_push(root->children, parse_tag(&s));
+        linked_list_push(root->children, parse_tag(&s));
     }    
     
     layout_document((gpu_rect){0,0,ctx.width,ctx.height}, doc);

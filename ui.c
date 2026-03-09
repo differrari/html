@@ -1,6 +1,7 @@
 #include "doc.h"
 #include "syscalls/syscalls.h"
 #include "front.h"
+#include "input_keycodes.h"
 
 int main(){
     
@@ -32,6 +33,8 @@ int main(){
         fb_clear(&ctx, 0);
         render_document(&ctx, default_doc_data);
         commit_draw_ctx(&ctx);
+        kbd_event ev = {};
+        if (read_event(&ev) && ev.key == KEY_ESC) return 0;
     }
     
     destroy_draw_ctx(&ctx);
