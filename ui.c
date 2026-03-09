@@ -12,6 +12,7 @@ i32 selected_y = 0;
 
 void draw_view(){
     VERTICAL(((node_info){ doc_layout_vertical, doc_gen_layout, .sizing_rule = size_fill, .bg_color = 0xFF123456 + 0x050505 }), {
+        uno_create_empty_view((node_info){.sizing_rule = size_relative, .percentage = 0.05f, .bg_color = 0});
         for (int y = 0; y < MAX_ROWS; y++){
             HORIZONTAL(((node_info){ .type = doc_layout_horizontal, .general_type = doc_gen_layout, .sizing_rule = size_fill}),{
                 for (int x = 0; x < MAX_COLS; x++){
@@ -25,6 +26,7 @@ void draw_view(){
                 }
             });
         }
+        uno_create_empty_view((node_info){.sizing_rule = size_relative, .percentage = 0.35f, .bg_color = 0});
     });
 }
 

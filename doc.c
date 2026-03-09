@@ -86,7 +86,7 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
     if (node->info.general_type == doc_gen_layout){
         if (node->info.type != doc_layout_none) layout.direction = node->info.type;
     }
-    if (node->info.sizing_rule == size_fill){
+    if (node->info.sizing_rule == size_fill || node->info.sizing_rule == size_relative){
         node->info.rect.size = layout.canvas.size;
     }
     
@@ -97,14 +97,29 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
     if (node->children){
         size_t num_children = linked_list_count(node->children);
         int index = 0;
+        float remaining_percentage = 1.f;
+        bool force_equal = false;
+        int remaining_children = 0;
+        for (linked_list_node_t *n = node->children->head; n; n = n->next){
+            if (!n->data) break;
+            document_node *child = n->data;
+            if (child->info.sizing_rule == size_relative){
+                remaining_percentage -= child->info.percentage;
+            } else remaining_children++;
+        }
+        if (remaining_percentage <= 0 || remaining_percentage >= 1){
+            remaining_percentage = 1;
+            force_equal = true;
+        }
         for (linked_list_node_t *n = node->children->head; n; n = n->next){
             if (!n->data) break;
             document_node *child = n->data;
             doc_layout new_layout = layout;
+            float view_percentage = child->info.sizing_rule == size_relative ? clampf(child->info.percentage,0.f,1.f) : remaining_percentage/remaining_children;
             if (layout.direction == doc_layout_horizontal){
-                new_layout.canvas.size.width /= num_children;
+                new_layout.canvas.size.width = force_equal ? floor((float)new_layout.canvas.size.width / num_children) : floor(new_layout.canvas.size.width*view_percentage);
             } else if (layout.direction == doc_layout_vertical){
-                new_layout.canvas.size.height /= num_children; 
+                new_layout.canvas.size.height = force_equal ? floor((float)new_layout.canvas.size.height / num_children) : floor(new_layout.canvas.size.height*view_percentage);
             }
             doc_layout_result layout_result = layout_doc_node(new_layout, doc, child);
             if (layout.direction == doc_layout_horizontal && !layout_result.force_newline){
