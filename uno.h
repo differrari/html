@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "doc.h"
+#include "uno_helpers.h"
 
 void uno_begin_vertical(node_info info);
 void uno_end_vertical();
@@ -16,8 +17,8 @@ void uno_create_empty_view(node_info info);
 void uno_create_view(node_info info, string_slice content);
 
 void set_document_view(void (*view_builder)(), gpu_rect canvas);
-void trigger_document_refresh();
-void refresh_document_layout();
+void uno_refresh();
+void uno_refresh_layout();
 
 void uno_draw(draw_ctx *ctx);
 

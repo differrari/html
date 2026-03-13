@@ -28,7 +28,7 @@ int text_force_newline(doc_text_size type){
     return false;
 }
 
-gpu_size calculate_label_size(string_slice slice, u32 font_size){
+static gpu_size calculate_label_size(string_slice slice, u32 font_size){
     if (!slice.length || font_size==0) return (gpu_size){0,0};
     int num_lines = 1;
     int num_chars = 0;

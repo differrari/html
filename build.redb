@@ -3,10 +3,11 @@
 
 bool compile_example(literal source_file) {
     if (not make_run("~/redlib","cross")) { return false; }
-    new_module("html");
-    set_name("html");
     
-    // debug();
+    new_module("html");
+    set_name("uno_demo");
+    
+    debug();
     
     set_package_type(package_red);
     set_target(target_native);

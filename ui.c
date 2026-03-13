@@ -1,6 +1,6 @@
 #include "doc.h"
 #include "syscalls/syscalls.h"
-#include "front.h"
+#include "uno.h"
 #include "input_keycodes.h"
 #include "math/math.h"
 
@@ -56,7 +56,7 @@ int main(){
                     case KEY_DOWN: changed = true; selected_y = (selected_y + 1 ) % MAX_ROWS; break;
                     default: break;
                 }
-                if (changed) trigger_document_refresh();
+                if (changed) uno_refresh();
             }  
         } 
     }

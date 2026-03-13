@@ -1,4 +1,4 @@
-#include "front.h"
+#include "uno.h"
 #include "data/struct/chunk_array.h"
 #include "syscalls/syscalls.h"
 
@@ -11,6 +11,7 @@ chunk_array_t *node_stack;
 
 document_node* uno_make_view(node_info info){
     document_node *node = zalloc(sizeof(document_node));
+    // print("Alloc %llx",node);
     node->info = info;
     return node;
 }
@@ -18,6 +19,7 @@ document_node* uno_make_view(node_info info){
 void uno_attach(document_node *parent, document_node *child){
     if (!parent || !child) return;
     if (!parent->children) parent->children = linked_list_create();
+    // print("Child now %llx",&parent->children);
     linked_list_push(parent->children, child);
 }
 
@@ -28,7 +30,7 @@ void uno_state_push(document_node *new_node){
     if (current_node){
         chunk_array_push(node_stack, &current_node);
     }
-    print(">Save %llx. New %llx, %i in stack",current_node,new_node,chunk_array_count(node_stack));
+    // print(">Save %llx. New %llx, %i in stack",current_node,new_node,chunk_array_count(node_stack));
     current_node = new_node;
 }
 
@@ -36,8 +38,8 @@ void uno_state_pop(){
     size_t count = chunk_array_count(node_stack);
     if (count){
         current_node = (document_node*)*(uptr*)chunk_array_pop(node_stack);
-        print("< Current node now %llx",current_node);
-    } else print("No elements in array");
+        // print("< Current node now %llx",current_node);
+    }
 }
 
 void uno_begin_vertical(node_info info){
@@ -110,27 +112,30 @@ void uno_destroy_node(void *ptr){
     document_node* node = ptr;
     if (!node) return;
     if (node->children){
-        // linked_list_for_each(node->children, uno_destroy_node);
+        linked_list_for_each(node->children, uno_destroy_node);
         // linked_list_destroy(node->children);
+        node->children = 0;
     }
-    // release(node);
+    // print("Release %llx",node);
+    release(node);
 }
 
 void set_document_view(void (*view_builder)(), gpu_rect canvas){
     view_build_func = view_builder;
     default_canvas = canvas;
-    trigger_document_refresh();
+    uno_refresh();
 }
 
-void trigger_document_refresh(){
+void uno_refresh(){
     chunk_array_reset(node_stack);
     uno_destroy_node(default_doc_data.root);
     default_doc_data.root = 0;
+    current_node = 0;
     if (view_build_func) view_build_func();
-    refresh_document_layout();
+    uno_refresh_layout();
 }
 
-void refresh_document_layout(){
+void uno_refresh_layout(){
     layout_document(default_canvas, default_doc_data);
 }
 
