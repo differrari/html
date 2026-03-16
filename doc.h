@@ -3,6 +3,8 @@
 #include "data/struct/linked_list.h"
 #include "string/slice.h"
 #include "draw/draw.h"
+#include "keyboard_input.h"
+#include "mouse_input.h"
 
 typedef enum {
     leading,
@@ -41,9 +43,19 @@ typedef struct {
 } node_info;
 
 typedef struct {
+    int tag;
+    
+    bool (*keyboard_input)(void*,kbd_event);
+    bool (*mouse_input)(mouse_data);
+    
+} uno_input_info;
+
+typedef struct {
     node_info info;
     linked_list_t *children;
     string_slice content;
+    uno_input_info input;
+    void *ctx;
 } document_node;
 
 typedef struct {

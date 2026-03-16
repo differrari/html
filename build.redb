@@ -13,7 +13,7 @@ bool compile_example(literal source_file) {
     set_target(target_native);
     
     source("doc.c");
-    source("front.c");
+    source("uno.c");
     source(source_file);
     
     if (compile()){
