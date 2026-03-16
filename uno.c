@@ -43,7 +43,7 @@ void uno_state_push(document_node *new_node){
 void uno_state_pop(){
     size_t count = chunk_array_count(node_stack);
     if (count){
-        current_node = (document_node*)*(uptr*)chunk_array_pop(node_stack);
+        current_node = (document_node*)*(uptr*)chunk_array_get(node_stack,chunk_array_count(node_stack)-1);
         // print("< Current node now %llx",current_node);
     }
 }
@@ -292,11 +292,11 @@ void uno_text_field_scroll(int tag, i32 x_shift, i32 y_shift){
     if (!content || !content->buffer) return;
     u8 cw = line_height(node->info.type);
     u8 lh = line_height(node->info.type);
-    if (x_shift){
+    if (x_shift != 0){
         if (info->offset.x + x_shift > 0) info->offset.x = 0;
         else info->offset.x += x_shift * cw;
     }
-    if (y_shift){
+    if (y_shift != 0){
         if (info->offset.y + y_shift > 0) info->offset.y = 0;
         else info->offset.y += y_shift * lh;   
     }
@@ -318,7 +318,9 @@ void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift){
         i32 lin, col = 0;
         string_slice slice = (string_slice){content->buffer,content->buffer_size};
         pos_to_lin_col(content->cursor, slice, &lin, &col);
-        if (col - (info->offset.x/cw) >= node->info.rect.size.width/cw) uno_text_field_scroll(tag, x_shift, y_shift);
+        i32 dis = col + (info->offset.x/cw) - (node->info.rect.size.width/cw);
+        if (dis >= 0) uno_text_field_scroll(tag, -dis, 0);
+        else if (-dis > node->info.rect.size.width/cw) uno_text_field_scroll(tag, -((node->info.rect.size.width/cw)+dis), 0);
     }
     if (y_shift){
         i32 lin, col = 0;
@@ -327,7 +329,9 @@ void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift){
         if (lin + y_shift < 0) lin = 0;
         else lin += y_shift;
         content->cursor = lin_col_to_pos(lin, col, slice);
-        if (lin - (info->offset.y/lh) > node->info.rect.size.height/lh) uno_text_field_scroll(tag, x_shift, y_shift);
+        i32 dis = lin + (info->offset.y/lh) - (node->info.rect.size.height/lh);
+        if (dis >= 0) uno_text_field_scroll(tag, 0, -dis);
+        else if (-dis > node->info.rect.size.height/lh) uno_text_field_scroll(tag, 0, -((node->info.rect.size.height/lh)+dis));
     }
     content->cursor = clamp(content->cursor, 0, content->buffer_size);
 }
