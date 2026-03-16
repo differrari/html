@@ -19,7 +19,7 @@ bool uno(literal source_file) {
     } else {
         set_package_type(package_lib);
     }
-    set_target(target_redacted);
+    set_target(target_redacted, false);
     
     source("doc.c");
     source("uno.c");
