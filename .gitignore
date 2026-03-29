@@ -21,3 +21,4 @@ trace
 *.dSYM
 build.c
 build
+symbols.sym

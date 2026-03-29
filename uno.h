@@ -15,7 +15,14 @@ void uno_end_depth();
 void uno_create_empty_view(node_info info);
 document_node* uno_create_view(node_info info, string_slice content);
 
-void uno_text_field(int tag, node_info info, string *content, string_slice placeholder);
+typedef struct {
+    string *content;
+    string_slice placeholder;
+    bool multiline;
+    uptr cursor;
+} text_field_info;
+
+void uno_text_field(int tag, node_info info, text_field_info text_info);
 
 void set_document_view(void (*view_builder)(), gpu_rect canvas);
 void uno_refresh();

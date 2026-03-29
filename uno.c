@@ -173,8 +173,9 @@ void uno_focus(int tag){
 
 bool uno_text_field_input(void *ctx, kbd_event event){
     if (!ctx) return false;
-    string *content = ctx;
-    if (event.key == KEY_ENTER) return false;
+    text_field_info *info = ctx;
+    string *content = info->content;
+    if (event.key == KEY_ENTER && !info->multiline) return false;
     if (event.type == KEY_PRESS && hid_keycode_to_char[event.key]){
         string new_string = string_from_char(hid_keycode_to_char[event.key]);
         if (!content->data){
@@ -199,15 +200,19 @@ bool uno_text_field_input(void *ctx, kbd_event event){
     return false;
 }
 
-void uno_text_field(int tag, node_info info, string *content, string_slice placeholder){
+void uno_text_field(int tag, node_info info, text_field_info text_info){
     info.general_type = doc_gen_text;
     if (info.type == doc_gen_type_none) info.type = doc_text_footnote;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     
-    document_node *node = uno_create_view(info, content && content->data && content->length ? slice_from_string(*content) : placeholder);
+    text_field_info *tinfo = zalloc(sizeof(text_field_info));
+    memcpy(tinfo, &text_info, sizeof(text_field_info));
+    
+    document_node *node = uno_create_view(info, tinfo->content && tinfo->content->data && tinfo->content->length ? slice_from_string(*tinfo->content) : tinfo->placeholder);
     node->input.keyboard_input = uno_text_field_input;
     node->input.tag = tag;
-    node->ctx = content;
+    
+    node->ctx = tinfo;
 }
 
 bool uno_dispatch_kbd(kbd_event ev){
