@@ -178,7 +178,7 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
             case doc_gen_text:
             {
                 int text_size = text_to_scale(node->info.type);
-                fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.padding, node->info.rect.point.y + node->info.padding, text_size, node->info.fg_color);
+                fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.offset.x + node->info.padding, node->info.rect.point.y + node->info.offset.y + node->info.padding, text_size, node->info.fg_color);
             }
             default: break;
         }

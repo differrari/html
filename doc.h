@@ -40,17 +40,19 @@ typedef struct {
     horizontal_alignment horiz_alignment;
     vertical_alignment vert_alignment;
     
+    gpu_point offset;
+    
 } node_info;
+
+typedef struct document_node document_node;
 
 typedef struct {
     int tag;
-    
-    bool (*keyboard_input)(void*,kbd_event);
-    bool (*mouse_input)(mouse_data);
-    
+    bool (*keyboard_input)(document_node*,kbd_event);
+    bool (*mouse_input)(document_node*,mouse_data);
 } uno_input_info;
 
-typedef struct {
+typedef struct document_node {
     node_info info;
     linked_list_t *children;
     string_slice content;
@@ -65,3 +67,5 @@ typedef struct {
 void layout_document(gpu_rect canvas, document_data doc);
 void render_document(draw_ctx *ctx, document_data doc);
 void debug_document(document_data doc);
+
+int text_to_scale(doc_text_size type);

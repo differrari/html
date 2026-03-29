@@ -3,6 +3,7 @@
 #include "syscalls/syscalls.h"
 #include "input_keycodes.h"
 #include "memory/memory.h"
+#include "math/math.h"
 
 void (*view_build_func)();
 document_data default_doc_data;
@@ -171,33 +172,63 @@ void uno_focus(int tag){
     uno_focus_node(node, tag);
 }
 
-bool uno_text_field_input(void *ctx, kbd_event event){
-    if (!ctx) return false;
-    text_field_info *info = ctx;
-    string *content = info->content;
+bool uno_text_field_input(document_node *node, kbd_event event){
+    if (!node || !node->ctx) return false;
+    text_field_info *info = node->ctx;
+    buffer *content = info->content;
+    if (!content || !content->buffer) return false;
     if (event.key == KEY_ENTER && !info->multiline) return false;
     if (event.type == KEY_PRESS && hid_keycode_to_char[event.key]){
-        string new_string = string_from_char(hid_keycode_to_char[event.key]);
-        if (!content->data){
-            *content = new_string;
-        } else {
-            string_concat_inplace(content, new_string);
-            string_free(new_string);
-        }
+        char c = hid_keycode_to_char[event.key];
+        buffer_write_to(content, &c, 1, content->cursor);
         uno_refresh();
         return true;
     }
     if (event.type == KEY_PRESS && event.key == KEY_BACKSPACE){
-        if (content->length) content->length--;
-        if (content->data) content->data[content->length] = 0;
-        if (content->data && !content->length){
-            string_free(*content);
-            memset(content, 0, sizeof(string));
-        }
+        if (content->buffer_size) content->buffer_size--;
+        if (content->buffer) ((char*)content->buffer)[content->buffer_size] = 0;
         uno_refresh();
         return true;
     }
     return false;
+}
+
+u32 lin_col_to_pos(u32 line, u32 col, string_slice content){
+    u32 line_number = 0;
+    u32 column = 0;
+    u32 pos = 0;
+    for (u32 i = 0; i < content.length; i++){
+        pos = i;
+        if (content.data[i] == '\n'){
+            if (line_number == line) return i;
+            column = 0;
+            line_number++;
+        } else {
+            if (line_number == line && column == col) return i;
+            column++;   
+        }
+    }
+    return pos;
+}
+
+bool uno_text_field_select(document_node *node, mouse_data data){
+    if (data.position.x < node->info.rect.point.x || 
+        data.position.x > node->info.rect.point.x + node->info.rect.size.width || 
+        data.position.y < node->info.rect.point.y || 
+        data.position.y > node->info.rect.point.y + node->info.rect.size.height) return false;
+    text_field_info *info = node->ctx;
+    buffer *content = info->content;
+    if (!content || !content->buffer) return false;
+    i32 x = data.position.x/fb_get_char_size(text_to_scale(node->info.type));
+    i32 y = data.position.y/(fb_get_char_size(text_to_scale(node->info.type)) + 2);//TODO: line padding should be customizable
+    float oy = (float)node->info.offset.y/((i32)fb_get_char_size(text_to_scale(node->info.type)) + 2.f);
+    
+    float ox = (float)node->info.offset.x/(i32)fb_get_char_size(text_to_scale(node->info.type));
+
+    x -= round_to_int(ox);
+    y -= round_to_int(oy);
+    content->cursor = lin_col_to_pos(y, x, (string_slice){content->buffer,content->buffer_size});
+    return true;
 }
 
 void uno_text_field(int tag, node_info info, text_field_info text_info){
@@ -208,8 +239,9 @@ void uno_text_field(int tag, node_info info, text_field_info text_info){
     text_field_info *tinfo = zalloc(sizeof(text_field_info));
     memcpy(tinfo, &text_info, sizeof(text_field_info));
     
-    document_node *node = uno_create_view(info, tinfo->content && tinfo->content->data && tinfo->content->length ? slice_from_string(*tinfo->content) : tinfo->placeholder);
+    document_node *node = uno_create_view(info, tinfo->content && tinfo->content->buffer && tinfo->content->buffer_size ? (string_slice){.data = tinfo->content->buffer, .length = tinfo->content->buffer_size } : tinfo->placeholder);
     node->input.keyboard_input = uno_text_field_input;
+    node->input.mouse_input = uno_text_field_select;
     node->input.tag = tag;
     
     node->ctx = tinfo;
@@ -219,7 +251,19 @@ bool uno_dispatch_kbd(kbd_event ev){
     if (!focused_node) return false;//TODO: find input automatically?
     
     if (focused_node->input.keyboard_input)
-        return focused_node->input.keyboard_input(focused_node->ctx,ev);
+        return focused_node->input.keyboard_input(focused_node,ev);
+    
+    return false;
+}
+
+bool uno_dispatch_mouse(mouse_data mouse){
+    if (!mouse_button_down(&mouse, 0)) return false;
+    // if (!focused_node){
+    //     //TODO: focus
+    // }
+    
+    if (focused_node->input.mouse_input)
+        return focused_node->input.mouse_input(focused_node,mouse);
     
     return false;
 }

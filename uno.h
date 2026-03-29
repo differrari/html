@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "doc.h"
+#include "files/buffer.h"
 
 void uno_begin_vertical(node_info info);
 void uno_end_vertical();
@@ -16,10 +17,9 @@ void uno_create_empty_view(node_info info);
 document_node* uno_create_view(node_info info, string_slice content);
 
 typedef struct {
-    string *content;
+    buffer *content;
     string_slice placeholder;
     bool multiline;
-    uptr cursor;
 } text_field_info;
 
 void uno_text_field(int tag, node_info info, text_field_info text_info);
@@ -32,6 +32,7 @@ void uno_draw(draw_ctx *ctx);
 
 void uno_focus(int tag);
 bool uno_dispatch_kbd(kbd_event ev);
+bool uno_dispatch_mouse(mouse_data mouse);
 
 #define VERTICAL(info, children) uno_begin_vertical((info)); children; uno_end_vertical();
 #define HORIZONTAL(info, children) uno_begin_horizontal((info)); children; uno_end_horizontal();
