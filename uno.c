@@ -178,24 +178,33 @@ bool uno_text_field_input(document_node *node, kbd_event event){
     buffer *content = info->content;
     if (!content || !content->buffer) return false;
     if (event.key == KEY_ENTER && !info->multiline) return false;
-    if (event.type == KEY_PRESS && hid_keycode_to_char[event.key]){
-        char c = hid_keycode_to_char[event.key];
+    if (event.modifier == KEY_MOD_LSHIFT)
+        info->modifier = event.type == MOD_RELEASE ? 0 : event.modifier;
+    if (event.type != KEY_PRESS) return false;
+    if (event.key == KEY_BACKSPACE){
+        buffer_delete(content, 1);
+        uno_refresh();
+        return true;
+    }
+    if (event.key == KEY_TAB){
+        char *indent = "\t\t\t\t";
+        buffer_write_to(content, indent, 4, content->cursor);
+        uno_refresh();
+        return true;
+    }
+    char c = hid_to_char(event.key, info->modifier);
+    if (event.type == KEY_PRESS && c){
         buffer_write_to(content, &c, 1, content->cursor);
         uno_refresh();
         return true;
     }
-    if (event.type == KEY_PRESS && event.key == KEY_BACKSPACE){
-        if (content->buffer_size) content->buffer_size--;
-        if (content->buffer) ((char*)content->buffer)[content->buffer_size] = 0;
-        uno_refresh();
-        return true;
-    }
+    
     return false;
 }
 
-u32 lin_col_to_pos(u32 line, u32 col, string_slice content){
-    u32 line_number = 0;
-    u32 column = 0;
+u32 lin_col_to_pos(i32 line, i32 col, string_slice content){
+    i32 line_number = 0;
+    i32 column = 0;
     u32 pos = 0;
     for (u32 i = 0; i < content.length; i++){
         pos = i;
@@ -209,6 +218,17 @@ u32 lin_col_to_pos(u32 line, u32 col, string_slice content){
         }
     }
     return pos;
+}
+
+void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col){
+    *lin = 0;
+    *col = 0;
+    for (u32 i = 0; i < min(pos,content.length); i++){
+        if (content.data[i] == '\n'){
+            *col = 1;
+            *lin = (*lin) + 1;
+        } else *col = (*col) + 1;
+    }
 }
 
 bool uno_text_field_select(document_node *node, mouse_data data){
@@ -231,20 +251,31 @@ bool uno_text_field_select(document_node *node, mouse_data data){
     return true;
 }
 
-void uno_text_field(int tag, node_info info, text_field_info text_info){
+void uno_text_field(int tag, node_info info, text_field_info *text_info){
+    
+    uno_begin_depth((node_info){});
+    
     info.general_type = doc_gen_text;
     if (info.type == doc_gen_type_none) info.type = doc_text_footnote;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     
-    text_field_info *tinfo = zalloc(sizeof(text_field_info));
-    memcpy(tinfo, &text_info, sizeof(text_field_info));
-    
-    document_node *node = uno_create_view(info, tinfo->content && tinfo->content->buffer && tinfo->content->buffer_size ? (string_slice){.data = tinfo->content->buffer, .length = tinfo->content->buffer_size } : tinfo->placeholder);
+    document_node *node = uno_create_view(info, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
     node->input.keyboard_input = uno_text_field_input;
     node->input.mouse_input = uno_text_field_select;
     node->input.tag = tag;
     
-    node->ctx = tinfo;
+    node->ctx = text_info;
+    
+    i32 lin, col = 0;
+    pos_to_lin_col(text_info->content->cursor, (string_slice){text_info->content->buffer,text_info->content->buffer_size}, &lin, &col);
+    
+    u8 cur_size = fb_get_char_size(text_to_scale(info.type));
+    
+    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * cur_size),node->info.offset.y + (lin * cur_size),3,cur_size}}, (string_slice){});
+    uno_state_push(cursor);
+    uno_state_push(node);
+    
+    uno_end_depth();
 }
 
 bool uno_dispatch_kbd(kbd_event ev){

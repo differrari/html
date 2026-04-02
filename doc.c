@@ -82,7 +82,7 @@ gpu_rect calculate_label(string_slice slice, u32 font_size, gpu_rect rect, horiz
 doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document_node *node){
     doc_layout_result result = {};
     if (!node) return result;
-    node->info.rect.point = (gpu_point){layout.canvas.point.x,layout.canvas.point.y};
+    if (node->info.sizing_rule != size_absolute) node->info.rect.point = (gpu_point){layout.canvas.point.x,layout.canvas.point.y};
     if (node->info.general_type == doc_gen_layout){
         if (node->info.type != doc_layout_none) layout.direction = node->info.type;
     }
@@ -90,8 +90,10 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
         node->info.rect.size = layout.canvas.size;
     }
     
-    layout.canvas.point.x += node->info.padding;
-    layout.canvas.point.y += node->info.padding;
+    if (node->info.sizing_rule != size_absolute){
+        layout.canvas.point.x += node->info.padding;
+        layout.canvas.point.y += node->info.padding;
+    }
     layout.canvas.size.width -= node->info.padding * 2;
     layout.canvas.size.height -= node->info.padding * 2;
     if (node->children){
