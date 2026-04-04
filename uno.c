@@ -151,17 +151,20 @@ void uno_draw(draw_ctx *ctx){
     render_document(ctx, default_doc_data);
 }
 
-void uno_focus_node(document_node *node, int tag){
-    if (!tag) return;
+document_node* uno_find_node(document_node *node, int tag){
+    if (!tag) return 0;
     if (node->input.tag == tag){
-        focused_node = node;
-        focused_tag = tag;
+        return node;
     }
     else if (node->children){
         for (linked_list_node_t *child = node->children->head; child; child = child->next){
-            if (child && child->data) uno_focus_node(child->data, tag);
+            if (child && child->data){
+                document_node* ret = uno_find_node(child->data, tag);
+                if (ret) return ret;
+            }
         }
     }
+    return 0;
 }
 
 void uno_focus(int tag){
@@ -169,7 +172,8 @@ void uno_focus(int tag){
     if (!tag)
         return;
     document_node *node = default_doc_data.root;
-    uno_focus_node(node, tag);
+    focused_node = uno_find_node(node, tag);
+    if (focused_node) focused_tag = tag;
 }
 
 bool uno_text_field_input(document_node *node, kbd_event event){
@@ -178,7 +182,7 @@ bool uno_text_field_input(document_node *node, kbd_event event){
     buffer *content = info->content;
     if (!content || !content->buffer) return false;
     if (event.key == KEY_ENTER && !info->multiline) return false;
-    if (event.modifier == KEY_MOD_LSHIFT)
+    if (event.modifier == KEY_MOD_LSHIFT || event.modifier == KEY_MOD_LCTRL)
         info->modifier = event.type == MOD_RELEASE ? 0 : event.modifier;
     if (event.type != KEY_PRESS) return false;
     if (event.key == KEY_BACKSPACE){
@@ -237,6 +241,7 @@ bool uno_text_field_select(document_node *node, mouse_data data){
         data.position.y < node->info.rect.point.y || 
         data.position.y > node->info.rect.point.y + node->info.rect.size.height) return false;
     text_field_info *info = node->ctx;
+    if (!info) return false;
     buffer *content = info->content;
     if (!content || !content->buffer) return false;
     i32 x = data.position.x/fb_get_char_size(text_to_scale(node->info.type));
@@ -252,15 +257,17 @@ bool uno_text_field_select(document_node *node, mouse_data data){
     return true;
 }
 
+#define line_height(text) (fb_get_char_size(text_to_scale(text)) + 2)
+#define char_width(text) (fb_get_char_size(text_to_scale(text)))
+
 void uno_text_field(int tag, node_info info, text_field_info *text_info){
-    
-    uno_begin_depth((node_info){});
-    
     info.general_type = doc_gen_text;
     if (info.type == doc_gen_type_none) info.type = doc_text_footnote;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     
-    document_node *node = uno_create_view(info, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
+    info.offset = text_info->offset;
+    uno_begin_depth(info);
+    document_node *node = uno_create_view((node_info){.general_type = info.general_type, .type = info.type, .fg_color = info.fg_color, .bg_color = info.bg_color, .offset = info.offset}, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
     node->input.keyboard_input = uno_text_field_input;
     node->input.mouse_input = uno_text_field_select;
     node->input.tag = tag;
@@ -270,13 +277,67 @@ void uno_text_field(int tag, node_info info, text_field_info *text_info){
     i32 lin, col = 0;
     pos_to_lin_col(text_info->content->cursor, (string_slice){text_info->content->buffer,text_info->content->buffer_size}, &lin, &col);
     
-    u8 cur_size = fb_get_char_size(text_to_scale(info.type)) + 2;
-    
-    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * (cur_size-2)),node->info.offset.y + (lin * cur_size),3,cur_size}}, (string_slice){});
-    uno_state_push(cursor);
-    uno_state_push(node);
+    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * char_width(info.type)),node->info.offset.y + (lin * line_height(info.type)),3,line_height(info.type)}}, (string_slice){});
     
     uno_end_depth();
+}
+
+void uno_text_field_scroll(int tag, i32 x_shift, i32 y_shift){
+    document_node *node = uno_find_node(default_doc_data.root, tag);
+    if (!node) return;
+    if (node->info.general_type != doc_gen_text) return;
+    text_field_info *info = node->ctx;
+    if (!info) return;
+    buffer *content = info->content;
+    if (!content || !content->buffer) return;
+    u8 cw = line_height(node->info.type);
+    u8 lh = line_height(node->info.type);
+    if (x_shift){
+        if (info->offset.x + x_shift > 0) info->offset.x = 0;
+        else info->offset.x += x_shift * cw;
+    }
+    if (y_shift){
+        if (info->offset.y + y_shift > 0) info->offset.y = 0;
+        else info->offset.y += y_shift * lh;   
+    }
+}
+
+void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift){
+    document_node *node = uno_find_node(default_doc_data.root, tag);
+    if (!node) return;
+    if (node->info.general_type != doc_gen_text) return;
+    text_field_info *info = node->ctx;
+    if (!info) return;
+    buffer *content = info->content;
+    if (!content || !content->buffer) return;
+    u8 cw = line_height(node->info.type);
+    u8 lh = line_height(node->info.type);
+    if (x_shift){
+        if ((i64)content->cursor + x_shift < 0) content->cursor = 0;
+        else content->cursor += x_shift;
+        i32 lin, col = 0;
+        string_slice slice = (string_slice){content->buffer,content->buffer_size};
+        pos_to_lin_col(content->cursor, slice, &lin, &col);
+        if (col - (info->offset.x/cw) >= node->info.rect.size.width/cw) uno_text_field_scroll(tag, x_shift, y_shift);
+    }
+    if (y_shift){
+        i32 lin, col = 0;
+        string_slice slice = (string_slice){content->buffer,content->buffer_size};
+        pos_to_lin_col(content->cursor, slice, &lin, &col);
+        if (lin + y_shift < 0) lin = 0;
+        else lin += y_shift;
+        content->cursor = lin_col_to_pos(lin, col, slice);
+        if (lin - (info->offset.y/lh) > node->info.rect.size.height/lh) uno_text_field_scroll(tag, x_shift, y_shift);
+    }
+    content->cursor = clamp(content->cursor, 0, content->buffer_size);
+}
+
+void uno_label(node_info info, doc_text_size size, string_slice content){
+    info.general_type = doc_gen_text;
+    info.type = size;
+    info.sizing_rule = size_fit;
+    if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
+    uno_create_view(info, content);
 }
 
 bool uno_dispatch_kbd(kbd_event ev){
