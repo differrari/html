@@ -225,7 +225,7 @@ void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col){
     *col = 0;
     for (u32 i = 0; i < min(pos,content.length); i++){
         if (content.data[i] == '\n'){
-            *col = 1;
+            *col = 0;
             *lin = (*lin) + 1;
         } else *col = (*col) + 1;
     }
@@ -248,6 +248,7 @@ bool uno_text_field_select(document_node *node, mouse_data data){
     x -= round_to_int(ox);
     y -= round_to_int(oy);
     content->cursor = lin_col_to_pos(y, x, (string_slice){content->buffer,content->buffer_size});
+    uno_refresh();
     return true;
 }
 
@@ -269,9 +270,9 @@ void uno_text_field(int tag, node_info info, text_field_info *text_info){
     i32 lin, col = 0;
     pos_to_lin_col(text_info->content->cursor, (string_slice){text_info->content->buffer,text_info->content->buffer_size}, &lin, &col);
     
-    u8 cur_size = fb_get_char_size(text_to_scale(info.type));
+    u8 cur_size = fb_get_char_size(text_to_scale(info.type)) + 2;
     
-    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * cur_size),node->info.offset.y + (lin * cur_size),3,cur_size}}, (string_slice){});
+    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * (cur_size-2)),node->info.offset.y + (lin * cur_size),3,cur_size}}, (string_slice){});
     uno_state_push(cursor);
     uno_state_push(node);
     
