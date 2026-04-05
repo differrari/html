@@ -267,7 +267,7 @@ void uno_text_field(int tag, node_info info, text_field_info *text_info){
     
     info.offset = text_info->offset;
     uno_begin_depth(info);
-    document_node *node = uno_create_view((node_info){.general_type = info.general_type, .type = info.type, .fg_color = info.fg_color, .bg_color = info.bg_color, .offset = info.offset}, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
+    document_node *node = uno_create_view((node_info){.general_type = info.general_type, .type = info.type, .fg_color = info.fg_color, .bg_color = info.bg_color, .offset = info.offset, .sizing_rule = size_fill}, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
     node->input.keyboard_input = uno_text_field_input;
     node->input.mouse_input = uno_text_field_select;
     node->input.tag = tag;
@@ -355,7 +355,7 @@ bool uno_dispatch_mouse(mouse_data mouse){
     //     //TODO: focus
     // }
     
-    if (focused_node->input.mouse_input)
+    if (focused_node && focused_node->input.mouse_input)
         return focused_node->input.mouse_input(focused_node,mouse);
     
     return false;
