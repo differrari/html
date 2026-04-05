@@ -1,29 +1,39 @@
 @includeC("redbuild.h")
 @includeC("syscalls/syscalls.h")
 
-bool compile_example(literal source_file) {
+bool uno(literal source_file) {
     if (not make_run("~/redlib","cross")) { return false; }
     
-    new_module("html");
-    set_name("uno_demo");
+    new_module("uno");
+    if (source_file) {
+        set_name("uno_demo");
+    } else {
+        set_name("uno");
+    }
     
-    debug();
+    // debug();
     
-    set_package_type(package_red);
-    set_target(target_native);
+    if (source_file){
+        set_package_type(package_red);
+    } else {
+        set_package_type(package_lib);
+    }
+    set_target(target_redacted);
     
     source("doc.c");
     source("uno.c");
-    source(source_file);
+    if (source_file) { source(source_file); }
     
     if (compile()){
         gen_compile_commands(source_file);
-        run();
+        if (source_file) {
+            run();
+        }
     }
 }
 
 int main() {
     defer emit_compile_commands();
     rebuild_self();
-    return not compile_example("ui.c");
+    return not uno(0);
 }
