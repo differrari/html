@@ -171,7 +171,6 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
         }
     if (node->content.length){
         int text_size = text_to_scale(node->info.type);
-        if (node->info.general_type == doc_gen_button) print("Drawing %v %i %ix%i",node->content,text_size,node->info.rect.point.x + node->info.offset.x + node->info.padding,node->info.rect.point.y + node->info.offset.y + node->info.padding);
         fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.offset.x + node->info.padding, node->info.rect.point.y + node->info.offset.y + node->info.padding, text_size, node->info.fg_color);
     }
 }
