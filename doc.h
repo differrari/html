@@ -20,7 +20,7 @@ typedef enum {
 
 typedef enum { doc_text_none, doc_text_body, doc_text_title, doc_text_subtitle, doc_text_heading, doc_text_subheading, doc_text_footnote, doc_text_caption } doc_text_size;
 typedef enum { doc_layout_none, doc_layout_vertical, doc_layout_horizontal, doc_layout_depth } doc_layout_types;
-typedef enum { doc_gen_type_none, doc_gen_text, doc_gen_layout } doc_gen_type;
+typedef enum { doc_gen_type_none, doc_gen_text, doc_gen_layout, doc_gen_button } doc_gen_type;
 
 typedef enum { size_none, size_fit, size_fill, size_relative, size_absolute } size_rule;
 

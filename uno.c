@@ -236,6 +236,7 @@ void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col){
 }
 
 bool uno_text_field_select(document_node *node, mouse_data data){
+    if (!mouse_button_down(&data, 0)) return false;
     if (data.position.x < node->info.rect.point.x || 
         data.position.x > node->info.rect.point.x + node->info.rect.size.width || 
         data.position.y < node->info.rect.point.y || 
@@ -336,10 +337,42 @@ void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift){
     content->cursor = clamp(content->cursor, 0, content->buffer_size);
 }
 
+bool mouse_in_node(document_node *node, mouse_data data){
+    if (data.position.x < node->info.rect.point.x || 
+        data.position.x > node->info.rect.point.x + node->info.rect.size.width || 
+        data.position.y < node->info.rect.point.y || 
+        data.position.y > node->info.rect.point.y + node->info.rect.size.height) return false;
+    return true;
+}
+
+bool uno_button_click(document_node *node, mouse_data data){
+    if (!node) return false;
+    if (node->info.general_type != doc_gen_button) return false;
+    button_info *info = node->ctx;
+    if (!info) return false;
+    if (mouse_button_down(&data, LMB)){
+        if (info->press) info->press(node->input.tag, data.position);
+    } else if (info->hover) info->hover(node->input.tag, data.position);//TODO: for hover to work, we need to disable click-only in uno_dispatch_mouse
+        
+    return true;
+}
+
+void uno_button(int tag, node_info info, button_info *b_info, string_slice label){
+    info.general_type = doc_gen_button;
+    if (info.type == doc_text_none) info.type = doc_text_body;    
+    if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
+    document_node *node = uno_create_view(info, label);
+    node->input.mouse_input = uno_button_click;
+    node->input.tag = tag;
+    node->ctx = b_info;
+    node->content = label;
+}
+
 void uno_label(node_info info, doc_text_size size, string_slice content){
     info.general_type = doc_gen_text;
     info.type = size;
-    info.sizing_rule = size_fit;
+    if (info.type == doc_text_none) info.type = doc_text_body;    
+    if (info.sizing_rule == size_none) info.sizing_rule = size_fit;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     uno_create_view(info, content);
 }
@@ -353,11 +386,33 @@ bool uno_dispatch_kbd(kbd_event ev){
     return false;
 }
 
+bool find_mouse_item(document_node *node, mouse_data data){
+    if (!node) return false;
+    if (node->children){
+        for (linked_list_node_t *n = node->children->head; n; n = n->next)
+            if (find_mouse_item(n->data, data)) return true;
+    }
+    if (mouse_in_node(node, data)){
+        if (node->input.mouse_input) node->input.mouse_input(node, data);
+        return true;
+    }
+    return false;
+}
+
+static bool clicked = false;
+
 bool uno_dispatch_mouse(mouse_data mouse){
-    if (!mouse_button_down(&mouse, 0)) return false;
+    if (!mouse_button_down(&mouse, 0)){
+        clicked = false;
+        return false;
+    }
+    if (clicked) return false;
+    clicked = true;
     // if (!focused_node){
     //     //TODO: focus
     // }
+    
+    if (find_mouse_item(default_doc_data.root, mouse)) return true;
     
     if (focused_node && focused_node->input.mouse_input)
         return focused_node->input.mouse_input(focused_node,mouse);

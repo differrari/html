@@ -143,18 +143,12 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
         }
     }
     if (node->content.length){
-        switch (node->info.general_type) {
-            case doc_gen_text:
-            {
-                int text_size = text_to_scale(node->info.type);
-                if (!text_size) return (doc_layout_result){};
-                gpu_rect label_rect = calculate_label(node->content, text_size, layout.canvas, node->info.horiz_alignment, node->info.vert_alignment);
-                if (node->info.sizing_rule == size_fit) node->info.rect.size = label_rect.size;
-                node->info.rect.point = label_rect.point;
-                result.force_newline = text_force_newline(node->info.type);
-            } break;
-            default: break;
-        }
+        int text_size = text_to_scale(node->info.type);
+        if (!text_size) return (doc_layout_result){};
+        gpu_rect label_rect = calculate_label(node->content, text_size, layout.canvas, node->info.horiz_alignment, node->info.vert_alignment);
+        if (node->info.sizing_rule == size_fit) node->info.rect.size = label_rect.size;
+        node->info.rect.point = label_rect.point;
+        result.force_newline = text_force_newline(node->info.type);
     }
     
     return result;
@@ -176,14 +170,9 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
             render_doc_node(ctx,n->data);
         }
     if (node->content.length){
-        switch (node->info.general_type) {
-            case doc_gen_text:
-            {
-                int text_size = text_to_scale(node->info.type);
-                fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.offset.x + node->info.padding, node->info.rect.point.y + node->info.offset.y + node->info.padding, text_size, node->info.fg_color);
-            }
-            default: break;
-        }
+        int text_size = text_to_scale(node->info.type);
+        if (node->info.general_type == doc_gen_button) print("Drawing %v %i %ix%i",node->content,text_size,node->info.rect.point.x + node->info.offset.x + node->info.padding,node->info.rect.point.y + node->info.offset.y + node->info.padding);
+        fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.offset.x + node->info.padding, node->info.rect.point.y + node->info.offset.y + node->info.padding, text_size, node->info.fg_color);
     }
 }
 
