@@ -35,7 +35,7 @@ typedef struct {
     gpu_rect rect;
     
     u32 padding;
-    float percentage;
+    float percentage;//TODO: x,y
     
     horizontal_alignment horiz_alignment;
     vertical_alignment vert_alignment;

@@ -352,7 +352,7 @@ bool uno_button_click(document_node *node, mouse_data data){
     if (!info) return false;
     if (mouse_button_down(&data, LMB)){
         if (info->press) info->press(node->input.tag, data.position);
-    } else if (info->hover) info->hover(node->input.tag, data.position);//TODO: for hover to work, we need to disable click-only in uno_dispatch_mouse
+    } else if (info->hover) info->hover(node->input.tag, data.position);//TODO: for hover to work, we need to disable click-only in uno_dispatch_mouse, which can get costly
         
     return true;
 }

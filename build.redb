@@ -32,8 +32,9 @@ bool uno(literal source_file) {
     }
 }
 
-int main() {
+int main(int argc, strarr argv) {
+    parse_arguments(argc,argv);
     defer emit_compile_commands();
-    rebuild_self();
+    rebuild_self(true);
     return not uno(0);
 }
