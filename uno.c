@@ -360,6 +360,7 @@ bool uno_button_click(document_node *node, mouse_data data){
 void uno_button(int tag, node_info info, button_info *b_info, string_slice label){
     info.general_type = doc_gen_button;
     if (info.type == doc_text_none) info.type = doc_text_body;    
+    if (info.sizing_rule == size_none) info.sizing_rule = size_fit;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     document_node *node = uno_create_view(info, label);
     node->input.mouse_input = uno_button_click;
