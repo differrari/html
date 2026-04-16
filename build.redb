@@ -2,6 +2,7 @@
 @includeC("syscalls/syscalls.h")
 
 bool uno(literal source_file) {
+    if (not git_sync()) { return false; }
     if (not make_run("~/redlib","cross")) { return false; }
     
     new_module("uno");
