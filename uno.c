@@ -182,8 +182,7 @@ bool uno_text_field_input(document_node *node, kbd_event event){
     buffer *content = info->content;
     if (!content || !content->buffer) return false;
     if (event.key == KEY_ENTER && !info->multiline) return false;
-    if (event.modifier == KEY_MOD_LSHIFT || event.modifier == KEY_MOD_LCTRL)
-        info->modifier = event.type == MOD_RELEASE ? 0 : event.modifier;
+    info->modifier = event.type == MOD_RELEASE ? 0 : event.modifier;
     if (event.type != KEY_PRESS) return false;
     if (event.key == KEY_BACKSPACE){
         buffer_delete(content, 1);
