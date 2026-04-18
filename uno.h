@@ -17,12 +17,17 @@ void uno_create_empty_view(node_info info);
 document_node* uno_create_view(node_info info, string_slice content);
 
 typedef struct {
+    u32 start;
+    u32 end;
+} select_range;
+
+typedef struct {
     buffer *content;
     string_slice placeholder;
     bool multiline;
-    bool modifier;
     color cursor_color;
     gpu_point offset;
+    select_range selection;
 } text_field_info;
 
 void uno_text_field(int tag, node_info info, text_field_info *text_info);
@@ -48,8 +53,10 @@ void uno_refresh_layout();
 void uno_draw(draw_ctx *ctx);
 
 void uno_focus(int tag);
-bool uno_dispatch_kbd(kbd_event ev);
-bool uno_dispatch_mouse(mouse_data mouse);
+bool uno_dispatch_kbd(kbd_event ev, u8 modifier);
+bool uno_dispatch_mouse(mouse_data mouse, u8 modifier);
+void uno_copy(void*);
+void uno_paste(void*);
 
 #define VERTICAL(info, children) uno_begin_vertical((info)); children; uno_end_vertical();
 #define HORIZONTAL(info, children) uno_begin_horizontal((info)); children; uno_end_horizontal();

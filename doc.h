@@ -48,8 +48,10 @@ typedef struct document_node document_node;
 
 typedef struct {
     int tag;
-    bool (*keyboard_input)(document_node*,kbd_event);
-    bool (*mouse_input)(document_node*,mouse_data);
+    bool (*keyboard_input)(document_node* node,kbd_event event, u8 modifier);
+    bool (*mouse_input)(document_node*,mouse_data, u8 modifier);
+    void* (*on_copy)(document_node*,size_t *out_size);
+    bool (*on_paste)(document_node*,void* buf, size_t data);
 } uno_input_info;
 
 typedef struct document_node {
