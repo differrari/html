@@ -21,14 +21,18 @@ bool uno(literal source_file) {
     
     source("doc.c");
     source("uno.c");
+    source("text.c");
     if (source_file) { source(source_file); }
     
     if (compile()){
         gen_compile_commands(source_file);
         if (source_file) {
-            run();
+            return run();
         }
+        print("Finished lib comp");
+        return true;
     }
+    return false;
 }
 
 int main(int argc, strarr argv) {

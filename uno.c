@@ -37,7 +37,6 @@ void uno_state_push(document_node *new_node){
     if (current_node){
         chunk_array_push(node_stack, &current_node);
     }
-    // print(">Save %llx. New %llx, %i in stack",current_node,new_node,chunk_array_count(node_stack));
     current_node = new_node;
 }
 
@@ -45,7 +44,6 @@ void uno_state_pop(){
     size_t count = chunk_array_count(node_stack);
     if (count){
         current_node = (document_node*)*(uptr*)chunk_array_get(node_stack,chunk_array_count(node_stack)-1);
-        // print("< Current node now %llx",current_node);
     }
 }
 
@@ -177,217 +175,7 @@ void uno_focus(int tag){
     if (focused_node) focused_tag = tag;
 }
 
-bool uno_text_field_input(document_node *node, kbd_event event, u8 modifier){
-    if (!node || !node->ctx) return false;
-    text_field_info *info = node->ctx;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return false;
-    if (event.key == KEY_ENTER && !info->multiline) return false;
-    if (event.type != KEY_PRESS) return false;
-    if (event.key == KEY_BACKSPACE){
-        if (info->selection.start || info->selection.end){
-            buffer_delete(content, info->selection.end, info->selection.end-info->selection.start);
-            info->selection.start = 0;
-            info->selection.end = 0;
-        } else 
-            buffer_delete(content, content->cursor, 1);
-        uno_refresh();
-        return true;
-    }
-    if (event.key == KEY_DELETE){
-        if (info->selection.start || info->selection.end){
-            buffer_delete(content, info->selection.end, info->selection.end-info->selection.start);
-            info->selection.start = 0;
-            info->selection.end = 0;
-        } else {
-            buffer_delete(content, content->cursor+1, 1);
-        }
-        uno_refresh();
-        return true;
-    }
-    if (event.key == KEY_TAB){
-        char *indent = "\t\t\t\t";
-        buffer_write_to(content, indent, 4, content->cursor);
-        uno_refresh();
-        return true;
-    }
-    char c = hid_to_char(event.key, modifier);
-    if (event.type == KEY_PRESS && c){
-        buffer_write_to(content, &c, 1, content->cursor);
-        uno_refresh();
-        return true;
-    }
-    
-    return false;
-}
-
-u32 lin_col_to_pos(i32 line, i32 col, string_slice content){
-    i32 line_number = 0;
-    i32 column = 0;
-    u32 pos = 0;
-    for (u32 i = 0; i < content.length; i++){
-        pos = i;
-        if (content.data[i] == '\n'){
-            if (line_number == line) return i;
-            column = 0;
-            line_number++;
-        } else {
-            if (line_number == line && column == col) return i;
-            column++;   
-        }
-    }
-    return pos;
-}
-
-void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col){
-    *lin = 0;
-    *col = 0;
-    for (u32 i = 0; i < min(pos,content.length); i++){
-        if (content.data[i] == '\n'){
-            *col = 0;
-            *lin = (*lin) + 1;
-        } else *col = (*col) + 1;
-    }
-}
-
-bool uno_text_field_mouse(document_node *node, mouse_data data, u8 modifier){
-    if (!mouse_button_down(&data, 0)) return false;
-    if (data.position.x < node->info.rect.point.x || 
-        data.position.x > node->info.rect.point.x + node->info.rect.size.width || 
-        data.position.y < node->info.rect.point.y || 
-        data.position.y > node->info.rect.point.y + node->info.rect.size.height) return false;
-    text_field_info *info = node->ctx;
-    if (!info) return false;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return false;
-    
-    i32 x = data.position.x/fb_get_char_size(text_to_scale(node->info.type));
-    i32 y = data.position.y/(fb_get_char_size(text_to_scale(node->info.type)) + 2);//TODO: line padding should be customizable
-    float oy = (float)node->info.offset.y/((i32)fb_get_char_size(text_to_scale(node->info.type)) + 2.f);
-    
-    float ox = (float)node->info.offset.x/(i32)fb_get_char_size(text_to_scale(node->info.type));
-
-    x -= round_to_int(ox);
-    y -= round_to_int(oy);
-    u32 selection = lin_col_to_pos(y, x, (string_slice){content->buffer,content->buffer_size});
-    
-    if (modifier & KEY_MOD_LSHIFT){
-        info->selection.start = min(content->cursor,selection);
-        info->selection.end   = max(content->cursor,selection);
-    } else {
-        info->selection.start = 0;
-        info->selection.end = 0;
-    }
-    content->cursor = selection;
-    uno_refresh();
-    return true;
-}
-
-#define line_height(text) (fb_get_char_size(text_to_scale(text)) + 2)
-#define char_width(text) (fb_get_char_size(text_to_scale(text)))
-
-void* uno_text_field_copy(document_node* node, size_t *out_size){
-    if (!node || !node->ctx || !out_size) return false;
-    text_field_info *info = node->ctx;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return false;
-    *out_size = info->selection.end-info->selection.start;
-    return &info->content->buffer[info->selection.start];
-}
-
-bool uno_text_field_paste(document_node* node, void* buf, size_t size){
-    if (!buf || !size) return false;
-    if (!node || !node->ctx) return false;
-    text_field_info *info = node->ctx;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return false;
-    for (size_t i = 0; i < size-1; i++)
-        if (!is_printable(((char*)buf)[i]))
-            return false;
-    buffer_write_to(content, buf, size, content->cursor);
-    uno_refresh();
-    return true;
-}
-
-void uno_text_field(int tag, node_info info, text_field_info *text_info){
-    info.general_type = doc_gen_text;
-    if (info.type == doc_gen_type_none) info.type = doc_text_footnote;
-    if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
-    
-    info.offset = text_info->offset;
-    uno_begin_depth(info);
-    document_node *node = uno_create_view((node_info){.general_type = info.general_type, .type = info.type, .fg_color = info.fg_color, .bg_color = info.bg_color, .offset = info.offset, .sizing_rule = size_fill}, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
-    node->input.keyboard_input = uno_text_field_input;
-    node->input.mouse_input = uno_text_field_mouse;
-    node->input.on_copy = uno_text_field_copy;
-    node->input.on_paste = uno_text_field_paste;
-    node->input.tag = tag;
-    
-    node->ctx = text_info;
-    
-    i32 lin, col = 0;
-    pos_to_lin_col(text_info->content->cursor, (string_slice){text_info->content->buffer,text_info->content->buffer_size}, &lin, &col);
-    
-    document_node *cursor = uno_create_view((node_info){.bg_color = text_info->selection.start || text_info->selection.end ? 0xFF555555 : text_info->cursor_color, .sizing_rule = size_absolute, .rect = (gpu_rect){node->info.offset.x + (col * char_width(info.type)),node->info.offset.y + (lin * line_height(info.type)),3,line_height(info.type)}}, (string_slice){});
-    
-    uno_end_depth();
-}
-
-void uno_text_field_scroll(int tag, i32 x_shift, i32 y_shift){
-    document_node *node = uno_find_node(default_doc_data.root, tag);
-    if (!node) return;
-    if (node->info.general_type != doc_gen_text) return;
-    text_field_info *info = node->ctx;
-    if (!info) return;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return;
-    u8 cw = line_height(node->info.type);
-    u8 lh = line_height(node->info.type);
-    if (x_shift != 0){
-        if (info->offset.x + x_shift > 0) info->offset.x = 0;
-        else info->offset.x += x_shift * cw;
-    }
-    if (y_shift != 0){
-        if (info->offset.y + y_shift > 0) info->offset.y = 0;
-        else info->offset.y += y_shift * lh;   
-    }
-}
-
-void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift){
-    document_node *node = uno_find_node(default_doc_data.root, tag);
-    if (!node) return;
-    if (node->info.general_type != doc_gen_text) return;
-    text_field_info *info = node->ctx;
-    if (!info) return;
-    buffer *content = info->content;
-    if (!content || !content->buffer) return;
-    u8 cw = line_height(node->info.type);
-    u8 lh = line_height(node->info.type);
-    if (x_shift){
-        if ((i64)content->cursor + x_shift < 0) content->cursor = 0;
-        else content->cursor += x_shift;
-        i32 lin, col = 0;
-        string_slice slice = (string_slice){content->buffer,content->buffer_size};
-        pos_to_lin_col(content->cursor, slice, &lin, &col);
-        i32 dis = col + (info->offset.x/cw) - (node->info.rect.size.width/cw);
-        if (dis >= 0) uno_text_field_scroll(tag, -dis, 0);
-        else if (-dis > node->info.rect.size.width/cw) uno_text_field_scroll(tag, -((node->info.rect.size.width/cw)+dis), 0);
-    }
-    if (y_shift){
-        i32 lin, col = 0;
-        string_slice slice = (string_slice){content->buffer,content->buffer_size};
-        pos_to_lin_col(content->cursor, slice, &lin, &col);
-        if (lin + y_shift < 0) lin = 0;
-        else lin += y_shift;
-        content->cursor = lin_col_to_pos(lin, col, slice);
-        i32 dis = lin + (info->offset.y/lh) - (node->info.rect.size.height/lh);
-        if (dis >= 0) uno_text_field_scroll(tag, 0, -dis);
-        else if (-dis > node->info.rect.size.height/lh) uno_text_field_scroll(tag, 0, -((node->info.rect.size.height/lh)+dis));
-    }
-    content->cursor = clamp(content->cursor, 0, content->buffer_size);
-}
-
-void uno_copy(void*){
+void uno_copy(void* ctx){
     size_t size = 0;
     if (focused_node && focused_node->input.on_copy){
         void *buf = focused_node->input.on_copy(focused_node, &size);
@@ -396,7 +184,7 @@ void uno_copy(void*){
     }
 }
 
-void uno_paste(void*){
+void uno_paste(void* ctx){
     size_t size = 0;
     void *buf = clipboard_paste(&size);
     if (focused_node && focused_node->input.on_paste)
@@ -460,8 +248,7 @@ bool find_mouse_item(document_node *node, mouse_data data, u8 modifier){
             if (find_mouse_item(n->data, data, modifier)) return true;
     }
     if (mouse_in_node(node, data)){
-        if (node->input.mouse_input) node->input.mouse_input(node, data, modifier);
-        return true;
+        if (node->input.mouse_input) return node->input.mouse_input(node, data, modifier);
     }
     return false;
 }
@@ -469,12 +256,11 @@ bool find_mouse_item(document_node *node, mouse_data data, u8 modifier){
 static bool clicked = false;
 
 bool uno_dispatch_mouse(mouse_data mouse, u8 modifier){
-    if (!mouse_button_down(&mouse, 0)){
-        clicked = false;
-        return false;
+    if (mouse_button_down(&mouse, 0)) clicked = false;
+    if (mouse_button_down(&mouse, 0)){
+        if (clicked) mouse.raw.buttons &= ~0;
+        clicked = true;
     }
-    if (clicked) return false;
-    clicked = true;
     // if (!focused_node){
     //     //TODO: focus
     // }
