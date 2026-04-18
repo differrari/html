@@ -16,8 +16,9 @@ void uno_text_field_scroll_in_line(document_node *node, bool begin){
             if (((char*)content->buffer)[i-1] == '\n'){ found = true; content->cursor = i; break; }
         if (!found) content->cursor = 0;
     } else {
+        if (((char*)content->buffer)[content->cursor] == '\n'){ return; }
         for (u64 i = content->cursor; i < content->buffer_size; i++)
-            if (((char*)content->buffer)[i+1] == '\n'){ found = true; content->cursor = i; break; }
+            if (((char*)content->buffer)[i+1] == '\n'){ found = true; content->cursor = i+1; break; }
         if (!found) content->cursor = content->buffer_size;
     }
     content->cursor = clamp(content->cursor, 0, content->buffer_size);
