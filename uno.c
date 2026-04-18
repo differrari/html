@@ -176,19 +176,20 @@ void uno_focus(int tag){
 }
 
 void uno_copy(void* ctx){
-    size_t size = 0;
     if (focused_node && focused_node->input.on_copy){
+        size_t size = 0;
         void *buf = focused_node->input.on_copy(focused_node, &size);
         if (size)
-            clipboard_copy(buf, size);
+            clipboard_copy(buf, size, supported_data(focused_node->info.general_type));
     }
 }
 
 void uno_paste(void* ctx){
-    size_t size = 0;
-    void *buf = clipboard_paste(&size);
-    if (focused_node && focused_node->input.on_paste)
+    if (focused_node && focused_node->input.on_paste){
+        size_t size = 0;
+        void *buf = clipboard_paste(supported_data(focused_node->info.general_type), &size);
         focused_node->input.on_paste(focused_node, buf, size);
+    }
 }
 
 bool mouse_in_node(document_node *node, mouse_data data){

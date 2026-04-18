@@ -24,6 +24,13 @@ int text_to_scale(doc_text_size type){
     }
 }
 
+data_signature supported_data(doc_gen_type type){
+    switch (type) {
+        case doc_gen_text: return DATA_SIG_TEXT;
+        default: return DATA_SIG_UNKNOWN;
+    }
+}
+
 int text_force_newline(doc_text_size type){
     return false;
 }

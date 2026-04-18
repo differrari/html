@@ -5,6 +5,7 @@
 #include "draw/draw.h"
 #include "keyboard_input.h"
 #include "mouse_input.h"
+#include "files/data_signatures.h"
 
 typedef enum {
     leading,
@@ -71,3 +72,4 @@ void render_document(draw_ctx *ctx, document_data doc);
 void debug_document(document_data doc);
 
 int text_to_scale(doc_text_size type);
+data_signature supported_data(doc_gen_type type);
