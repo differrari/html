@@ -1,6 +1,7 @@
 #include "doc.h"
 #include "syscalls/syscalls.h"
 #include "math/math.h"
+#include "draw/textdraw.h"
 
 typedef struct {
     gpu_rect canvas;
@@ -178,7 +179,19 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
         }
     if (node->content.length){
         int text_size = text_to_scale(node->info.type);
-        fb_draw_slice(ctx, node->content, node->info.rect.point.x + node->info.offset.x + node->info.padding, node->info.rect.point.y + node->info.offset.y + node->info.padding, text_size, node->info.fg_color);
+        gpu_rect rect = (gpu_rect){ 
+            { 
+                node->info.rect.point.x + node->info.offset.x + node->info.padding, 
+                node->info.rect.point.y + node->info.offset.y + node->info.padding
+            }, { 
+                node->info.rect.size.width - node->info.padding*2,
+                node->info.rect.size.height - node->info.padding*2
+            }
+        };
+        if (node->info.text_formatting.array_type != fmt_array_none){
+            fb_draw_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color, .wrap = wrap_word_preserve_indent }, node->info.text_formatting);
+        } else 
+            fb_draw_single_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color });
     }
 }
 

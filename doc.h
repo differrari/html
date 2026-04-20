@@ -43,6 +43,8 @@ typedef struct {
     
     gpu_point offset;
     
+    text_format_arr text_formatting;
+    
 } node_info;
 
 typedef struct document_node document_node;

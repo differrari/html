@@ -2,6 +2,7 @@
 #include "uno.h"
 #include "math/math.h"
 #include "input_keycodes.h"
+#include "draw/textdraw.h"
 
 void uno_text_field_shift_cursor_node(document_node *node, i32 x_shift, i32 y_shift);
 extern document_node* uno_find_node(document_node *node, int tag);
@@ -94,35 +95,6 @@ bool uno_text_field_input(document_node *node, kbd_event event, u8 modifier){
     return false;
 }
 
-u32 lin_col_to_pos(i32 line, i32 col, string_slice content){
-    i32 line_number = 0;
-    i32 column = 0;
-    u32 pos = 0;
-    for (u32 i = 0; i < content.length; i++){
-        pos = i;
-        if (content.data[i] == '\n'){
-            if (line_number == line) return i;
-            column = 0;
-            line_number++;
-        } else {
-            if (line_number == line && column == col) return i;
-            column++;   
-        }
-    }
-    return pos;
-}
-
-void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col){
-    *lin = 0;
-    *col = 0;
-    for (u32 i = 0; i < min(pos,content.length); i++){
-        if (content.data[i] == '\n'){
-            *col = 0;
-            *lin = (*lin) + 1;
-        } else *col = (*col) + 1;
-    }
-}
-
 void uno_text_field_scroll_node(document_node *node, i32 x_shift, i32 y_shift);
 
 bool uno_text_field_mouse(document_node *node, mouse_data data, u8 modifier){
@@ -201,7 +173,9 @@ void uno_text_field(int tag, node_info info, text_field_info *text_info){
     
     info.offset = text_info->offset;
     uno_begin_depth(info);
-    document_node *node = uno_create_view((node_info){.general_type = info.general_type, .type = info.type, .fg_color = info.fg_color, .bg_color = info.bg_color, .offset = info.offset, .sizing_rule = size_fill}, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
+    node_info text_node_info = info;
+    text_node_info.sizing_rule = size_fill;
+    document_node *node = uno_create_view(text_node_info, text_info->content && text_info->content->buffer && text_info->content->buffer_size ? (string_slice){.data = text_info->content->buffer, .length = text_info->content->buffer_size } : text_info->placeholder);
     node->input.keyboard_input = uno_text_field_input;
     node->input.mouse_input = uno_text_field_mouse;
     node->input.on_copy = uno_text_field_copy;
