@@ -11,7 +11,7 @@ draw_view {
                     button("Log in", {
                         .fill = 0.9f,
                         .text_size = 16,
-                    }));//TODO: How do some Immediate UI libs handle buttons & text input
+                    }));
                 img_button("help");
             });
         });

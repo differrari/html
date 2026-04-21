@@ -31,9 +31,6 @@ typedef struct {
 } text_field_info;
 
 void uno_text_field(int tag, node_info info, text_field_info *text_info);
-//TODO: these should be moved elsewhere, just not sure where
-u32 lin_col_to_pos(i32 line, i32 col, string_slice content);
-void pos_to_lin_col(u32 pos, string_slice content, i32 *lin, i32 *col);
 void uno_text_field_scroll(int tag, i32 x_shift, i32 y_shift);
 void uno_text_field_shift_cursor(int tag, i32 x_shift, i32 y_shift);
 

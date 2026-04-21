@@ -151,7 +151,7 @@ void uno_draw(draw_ctx *ctx){
 }
 
 document_node* uno_find_node(document_node *node, int tag){
-    if (!tag) return 0;
+    if (!tag || !node) return 0;
     if (node->input.tag == tag){
         return node;
     }
