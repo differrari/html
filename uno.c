@@ -255,8 +255,11 @@ bool find_mouse_item(document_node *node, mouse_data data, u8 modifier){
 }
 
 static bool clicked = false;
+static mouse_data last_mouse_stat; 
 
 bool uno_dispatch_mouse(mouse_data mouse, u8 modifier){
+    if (memcmp(&mouse, &last_mouse_stat, sizeof(mouse)) == 0) return false;
+    last_mouse_stat = mouse;
     if (mouse_button_down(&mouse, 0)) clicked = false;
     if (mouse_button_down(&mouse, 0)){
         if (clicked) mouse.raw.buttons &= ~0;

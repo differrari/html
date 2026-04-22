@@ -58,15 +58,16 @@ static gpu_size calculate_label_size(string_slice slice, u32 font_size){
 }
 
 gpu_rect calculate_label(string_slice slice, u32 font_size, gpu_rect rect, horizontal_alignment horiz_align, vertical_alignment vert_align){
+    //TODO: have the new textdraw more accurately do this for us
     gpu_size s = calculate_label_size(slice,font_size);
     gpu_point point = rect.point;
     switch (horiz_align)
     {
     case trailing:
-        point.x = (s.width>=rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + (rect.size.width - s.width));
+        point.x = (s.width >= rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + (rect.size.width - s.width));
         break;
     case horizontal_center:
-        point.x = (s.width>=rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + ((rect.size.width - s.width)/2));
+        point.x = (s.width >= rect.size.width) ? rect.point.x : (int32_t)(rect.point.x + ((rect.size.width - s.width)/2));
         break;
     default:
         break;
@@ -75,10 +76,10 @@ gpu_rect calculate_label(string_slice slice, u32 font_size, gpu_rect rect, horiz
     switch (vert_align)
     {
     case bottom:
-        point.y = (s.height>=rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + (rect.size.height - s.height));
+        point.y = (s.height >= rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + (rect.size.height - s.height));
         break;
     case vertical_center:
-        point.y = (s.height>=rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + ((rect.size.height - s.height)/2));
+        point.y = (s.height >= rect.size.height) ? rect.point.y : (int32_t)(rect.point.y + ((rect.size.height - s.height)/2));
         break;
     default:
         break;
@@ -154,6 +155,8 @@ doc_layout_result layout_doc_node(doc_layout layout, document_data doc, document
         int text_size = text_to_scale(node->info.type);
         if (!text_size) return (doc_layout_result){};
         gpu_rect label_rect = calculate_label(node->content, text_size, layout.canvas, node->info.horiz_alignment, node->info.vert_alignment);
+        label_rect.size.width += node->info.padding * 2;
+        label_rect.size.height += node->info.padding * 2;
         if (node->info.sizing_rule == size_fit) node->info.rect.size = label_rect.size;
         node->info.rect.point = label_rect.point;
         result.force_newline = text_force_newline(node->info.type);
@@ -189,9 +192,9 @@ void render_doc_node(draw_ctx *ctx, document_node *node){
             }
         };
         if (node->info.text_formatting.array_type != fmt_array_none){
-            fb_draw_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color, .wrap = wrap_word_preserve_indent }, node->info.text_formatting);
+            fb_draw_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color, .wrap = node->info.text_wrap_policy }, node->info.text_formatting);
         } else 
-            fb_draw_single_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color });
+            fb_draw_single_text(ctx, node->content, rect, (text_format){.scale = text_size, .color = node->info.fg_color, .wrap = node->info.text_wrap_policy });
     }
 }
 

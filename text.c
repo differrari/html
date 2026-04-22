@@ -168,7 +168,7 @@ bool uno_text_field_paste(document_node* node, void* buf, size_t size){
 
 void uno_text_field(int tag, node_info info, text_field_info *text_info){
     info.general_type = doc_gen_text;
-    if (info.type == doc_gen_type_none) info.type = doc_text_footnote;
+    if (info.type == doc_text_none) info.type = doc_text_footnote;
     if (!((info.fg_color >> 24) & 0xFF)) info.fg_color |= 0xFF << 24;
     
     info.offset = text_info->offset;

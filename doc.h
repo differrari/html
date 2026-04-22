@@ -43,6 +43,8 @@ typedef struct {
     
     gpu_point offset;
     
+    wrap_policy text_wrap_policy;
+    
     text_format_arr text_formatting;
     
 } node_info;
